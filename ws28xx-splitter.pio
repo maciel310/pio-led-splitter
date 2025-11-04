@@ -2,16 +2,29 @@
 
 .wrap_target
 
-; SET y, 0b101
-set x, 24
+set x, 5
+mov OSR, x ; Temporary - move this to pull from the FIFO
+set x, 1
+mov ISR, x    ; use the ISR as the pin value, since we can shift 0's into it each loop
+
+allloop:
+mov y, OSR    ; Copy pixel count from OSR to y
+strandloop:
+    set x, 24
 bitloop:
-    wait 1 pin 0
-    SET PINS, 1
-    ; MOV PINS, Y
-    wait 0 pin 0
-    SET PINS, 0
-    ; MOV PINS, NULL
-    jmp x-- bitloop
+        wait 1 pin 0
+        ; SET PINS, 1
+        MOV PINS, ISR
+        wait 0 pin 0
+        ; SET PINS, 0
+        MOV PINS, NULL
+        jmp x-- bitloop
+
+    jmp y-- strandloop
+IN NULL, 1
+MOV Y, ISR
+SET X, 0b1000
+JMP X!=Y allloop
 
 .wrap
 
@@ -33,6 +46,8 @@ static inline void ws28xx_splitter_init(PIO pio, uint sm, uint offset, uint sour
     sm_config_set_in_pins(&c, source_pin);
     sm_config_set_out_pins(&c, out_start_pin, out_pin_count);
     sm_config_set_set_pins(&c, out_start_pin, out_pin_count);
+
+    sm_config_set_in_shift(&c, /*shift_right=*/ false, /*autopush=*/ false, 0);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
