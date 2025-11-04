@@ -6,7 +6,7 @@
 
 #define SOURCE_PIN 28
 #define OUT_START_PIN 0
-#define OUT_PIN_COUNT 1
+#define OUT_PIN_COUNT 3
 
 void init_splitter_pio(PIO pio, uint sm, uint offset) {
     ws28xx_splitter_init(pio, sm, offset, SOURCE_PIN, OUT_START_PIN, OUT_PIN_COUNT);

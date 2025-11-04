@@ -1,11 +1,18 @@
 .program ws28xx_splitter
 
-set pindirs, 1   ; Set pin to output
 .wrap_target
+
+; SET y, 0b101
+set x, 24
+bitloop:
     wait 1 pin 0
-    set PINS 1
+    SET PINS, 1
+    ; MOV PINS, Y
     wait 0 pin 0
-    set PINS 0
+    SET PINS, 0
+    ; MOV PINS, NULL
+    jmp x-- bitloop
+
 .wrap
 
 % c-sdk {
