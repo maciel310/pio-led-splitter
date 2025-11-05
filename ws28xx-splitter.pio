@@ -1,8 +1,65 @@
+.program ws28xx_reset_watch
+
+; The signal can be high for as short as 0.5 microseconds, so we must sample
+; at least every 0.25 microseconds to not miss a high value (nyquist theorem).
+; This equates to 4MHz, but since we sample every other cycle in the loop (the
+; other cycle we're decrementing the counter), we must run at at least 8Mhz.
+; For simpler math the divider is set so we run at 10MHz
+;
+; At 10MHz, each instruction takes 100 ns.
+; We're looking for the pin to stay low for at least 50 microseconds,
+; meaning it needs to stay low for at least 500 cycles.
+; The loop body takes 2 cycles per iteration, so initializing iterating 250
+; times gives us the 50 microsecond timer.
+
+MOV OSR, !NULL   ; Fill the OSR with ones
+OUT X, 8         ; Shift 8 ones into X (set value to 255);
+MOV OSR, X       ; Save the 255 value into OSR for easy reloading
+
+.wrap_target
+
+one_found:
+MOV X, OSR          ; Restore loop target count into scratch register
+timer_loop:
+JMP PIN one_found   ; Start over if we see a one.
+JMP X-- timer_loop  ; If X decrements to 0 then the total time has passed.
+
+IRQ SET 4        ; Raise IRQ 4 when reset happens so other state machine can react.
+
+WAIT 1 PIN 0     ; Wait for a one before restarting countdown.
+
+.wrap
+
+% c-sdk {
+
+static inline void ws28xx_reset_watch_init(PIO pio, uint sm, uint offset, uint source_pin) {
+    pio_sm_config c = ws28xx_reset_watch_program_get_default_config(offset);
+
+    // Divide the 125MHz clock down to 10Mhz
+    sm_config_set_clkdiv_int_frac8(&c, 12, 128);
+
+    pio_gpio_init(pio, source_pin);
+
+    // Configure input pin direction
+    pio_sm_set_consecutive_pindirs(pio, sm, source_pin, 1, true);
+
+    sm_config_set_in_pins(&c, source_pin);
+    sm_config_set_jmp_pin(&c, source_pin);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+
 .program ws28xx_splitter
 
 .wrap_target
 
-set x, 5
+
+WAIT 1 IRQ 4
+
+set x, 4
 mov OSR, x ; Temporary - move this to pull from the FIFO
 set x, 1
 mov ISR, x    ; use the ISR as the pin value, since we can shift 0's into it each loop
@@ -10,7 +67,7 @@ mov ISR, x    ; use the ISR as the pin value, since we can shift 0's into it eac
 allloop:
 mov y, OSR    ; Copy pixel count from OSR to y
 strandloop:
-    set x, 24
+    set x, 23
 bitloop:
         wait 1 pin 0
         ; SET PINS, 1
