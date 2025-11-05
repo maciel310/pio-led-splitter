@@ -23,12 +23,13 @@ int main() {
     init_splitter_pio(pio, splitter_sm, pio_add_program(pio, &ws28xx_splitter_program), reset_watch_sm, pio_add_program(pio, &ws28xx_reset_watch_program));
 
     while (true) {
-        sleep_ms(1000);
-        // // Number of strands
-        // pio_sm_put_blocking(pio, 0, (1 << OUT_PIN_COUNT));
-        // // Count of pixels per strand
-        // pio_sm_put_blocking(pio, 0, 5);
-        // pio_sm_put_blocking(pio, 0, 5);
-        // pio_sm_put_blocking(pio, 0, 5);
+        // TODO - synchronize this with thte reset_watch PIO?
+
+        // Number of strands
+        pio_sm_put_blocking(pio, splitter_sm, (1 << OUT_PIN_COUNT));
+        // Count of pixels per strand
+        pio_sm_put_blocking(pio, splitter_sm, 6-1);
+        pio_sm_put_blocking(pio, splitter_sm, 10-1);
+        pio_sm_put_blocking(pio, splitter_sm, 21-1);
     }
 }

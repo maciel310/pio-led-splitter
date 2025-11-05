@@ -59,29 +59,30 @@ static inline void ws28xx_reset_watch_init(PIO pio, uint sm, uint offset, uint s
 
 WAIT 1 IRQ 4
 
-set x, 4
-mov OSR, x ; Temporary - move this to pull from the FIFO
-set x, 1
-mov ISR, x    ; use the ISR as the pin value, since we can shift 0's into it each loop
+PULL BLOCK     ; First message is the GPIO bitmask, indicating which PINS should be high.
+MOV ISR, OSR   ; Copy the strand bitmask to ISR so it can be bitshifted.
+main_loop:
+    IN NULL, 1     ; Shift strand bitmask over by 1
+    MOV Y, ISR     ; Copy to scratch for conditional jump
+    JMP !Y done    ; Once the bit has been shifted off this will be 0, and jump out of the loop.
 
-allloop:
-mov y, OSR    ; Copy pixel count from OSR to y
-strandloop:
-    set x, 23
-bitloop:
-        wait 1 pin 0
-        ; SET PINS, 1
+    PULL BLOCK     ; Get the number of pixels in this strand
+    MOV Y, OSR     ; Copy into Y scratch register
+strand_loop:
+    SET X, 23
+bit_loop:
+        WAIT 1 PIN 0
         MOV PINS, ISR
-        wait 0 pin 0
-        ; SET PINS, 0
+        WAIT 0 PIN 0
         MOV PINS, NULL
-        jmp x-- bitloop
+        JMP X-- bit_loop
 
-    jmp y-- strandloop
-IN NULL, 1
-MOV Y, ISR
-SET X, 0b1000
-JMP X!=Y allloop
+    JMP Y-- strand_loop    ; Loop until we're out of pixels in this strand
+
+    JMP main_loop  ; Unconditional jump, will explicitly jump out when done.
+
+done:
+NOP
 
 .wrap
 
@@ -104,7 +105,7 @@ static inline void ws28xx_splitter_init(PIO pio, uint sm, uint offset, uint sour
     sm_config_set_out_pins(&c, out_start_pin, out_pin_count);
     sm_config_set_set_pins(&c, out_start_pin, out_pin_count);
 
-    sm_config_set_in_shift(&c, /*shift_right=*/ false, /*autopush=*/ false, 0);
+    sm_config_set_in_shift(&c, /*shift_right=*/ true, /*autopush=*/ false, 0);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
