@@ -24,9 +24,9 @@ timer_loop:
 JMP PIN one_found   ; Start over if we see a one.
 JMP X-- timer_loop  ; If X decrements to 0 then the total time has passed.
 
-IRQ SET 4        ; Raise IRQ 4 when reset happens so other state machine can react.
+IRQ SET 0           ; Raise IRQ when reset happens so other state machine can react.
 
-WAIT 1 PIN 0     ; Wait for a one before restarting countdown.
+WAIT 1 PIN 0        ; Wait for a one before restarting countdown.
 
 .wrap
 
@@ -56,8 +56,6 @@ static inline void ws28xx_reset_watch_init(PIO pio, uint sm, uint offset, uint s
 
 .wrap_target
 
-
-WAIT 1 IRQ 4
 
 PULL BLOCK     ; First message is the GPIO bitmask, indicating which PINS should be high.
 MOV ISR, OSR   ; Copy the strand bitmask to ISR so it can be bitshifted.
@@ -108,6 +106,15 @@ static inline void ws28xx_splitter_init(PIO pio, uint sm, uint offset, uint sour
     sm_config_set_in_shift(&c, /*shift_right=*/ true, /*autopush=*/ false, 0);
 
     pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+// Reset handler to restart state machine. Called when ws28xx reset condition is met.
+static inline void ws28xx_splitter_reset(PIO pio, uint sm, uint offset) {
+    pio_sm_set_enabled(pio, sm, false);
+    pio_sm_restart(pio, sm);
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_exec(pio, sm, pio_encode_jmp(offset));
     pio_sm_set_enabled(pio, sm, true);
 }
 %}

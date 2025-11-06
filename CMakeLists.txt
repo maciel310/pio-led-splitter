@@ -37,6 +37,9 @@ pico_sdk_init()
 
 add_executable(pio-led-splitter pio-led-splitter.cpp )
 
+# Set binary to load fully into RAM in order to speed up interrupts
+pico_set_binary_type(pio-led-splitter copy_to_ram)
+
 pico_set_program_name(pio-led-splitter "pio-led-splitter")
 pico_set_program_version(pio-led-splitter "0.1")
 
